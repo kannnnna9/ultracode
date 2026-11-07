@@ -32,8 +32,9 @@ def contract_body(repo: Path) -> str:
     return body.replace("<!-- ultra-section-2 -->", "").strip()
 
 
-def write_agent_block(root: Path, repo: Path, skills_root: Path, library_root: Path) -> Path:
-    agents = root / "AGENTS.md"
+def write_agent_block(root: Path, repo: Path, skills_root: Path, library_root: Path,
+                      filename: str = "AGENTS.md") -> Path:
+    agents = root / filename
     block = (
         f"{BLOCK_START}\n"
         f"{contract_body(repo)}\n\n"
@@ -97,6 +98,9 @@ def main() -> int:
 
     agents = write_agent_block(root, repo, skills_root, library_root)
     print(f"contract-> {agents}")
+    if args.target == "claude":
+        claude = write_agent_block(root, repo, skills_root, library_root, "CLAUDE.md")
+        print(f"contract-> {claude}")
     print("\nOpen a new agent session in that root; the AGENTS.md block is the contract.")
     return 0
 
