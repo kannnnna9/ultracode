@@ -1,5 +1,8 @@
 # ULTRACODE
 
+[![ci](https://github.com/kannnnna9/ultracode/actions/workflows/ci.yml/badge.svg)](https://github.com/kannnnna9/ultracode/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 One agent stack built from three lineages that are good at different things:
 
 | Upstream | Owns | Why it is there |
