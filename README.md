@@ -28,8 +28,12 @@ resumes, and is re-read from disk per session so edits apply without a restart.
 
 ## Install
 
+**Hermes** (plugin: registers the skills, injects the contract as two prompt sections, installs the
+guard hooks):
+
 ```bash
-cd ~/dev/ultra
+git clone https://github.com/kannnnna9/ultracode.git ~/dev/ultracode
+cd ~/dev/ultracode
 python scripts/install.py            # copy to $HERMES_HOME/plugins/ultra + enable
 hermes plugins list | grep ultra     # verify
 ```
@@ -38,8 +42,21 @@ Start a **new** Hermes session. The first install needs one `hermes gateway rest
 restart) so the running gateway imports the plugin module; after that, contract edits take effect in
 the next new session with no restart.
 
-Update: `python scripts/install.py --update`
-Uninstall: `python scripts/install.py --uninstall`
+**Any other agent** (Claude Code, Codex, Cursor, OpenCode, …): the spine is plain `SKILL.md` files.
+
+```bash
+python scripts/install_portable.py --target claude             # ~/.claude/skills/ultra-* + AGENTS.md
+python scripts/install_portable.py --target project --path .   # ./.agent/skills + AGENTS.md block
+python scripts/install_portable.py --target generic --path ~/.my-agent
+```
+
+That writes `ultra-<skill>/SKILL.md`, `ultra-roles/`, the 92-pack `ultracode-library/` with its
+`INDEX.md`, and an idempotent ULTRACODE block in `AGENTS.md` at the target root.
+
+**Manual**: copy `skills/*` next to your agent's skills directory and paste `AGENTS.md` into your
+project root. Nothing else is required — no daemon, no dependency, no build step.
+
+Update (Hermes): `python scripts/install.py --update` · Uninstall: `python scripts/install.py --uninstall`
 
 ## Use
 
