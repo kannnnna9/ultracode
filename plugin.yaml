@@ -1,0 +1,11 @@
+name: ultra
+version: 1.0.0
+description: ULTRACODE — one agent stack from Karpathy's laws, Superpowers' process, ECC's surface.
+author: Hermes operator (assembled), derived from multica-ai/andrej-karpathy-skills, obra/superpowers, affaan-m/ECC
+license: MIT
+homepage: https://github.com/multica-ai/andrej-karpathy-skills
+provides_hooks:
+  - pre_tool_call
+  - post_tool_call
+tags: [process, tdd, planning, review, verification, library, context]
+requires_hermes: ">=0.19"

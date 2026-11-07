@@ -1,0 +1,118 @@
+"""Static checks: frontmatter, naming, cross-references, index freshness."""
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+CORE = (
+    "contract", "discover", "plan", "build", "verify", "debug", "review",
+    "ship", "parallel", "context", "learn", "library", "audit",
+)
+
+
+def frontmatter(text: str):
+    if not text.startswith("---"):
+        return None
+    m = re.search(r"\n---\s*\n", text[3:])
+    if not m:
+        return None
+    fm = {}
+    for line in text[3:m.start() + 3].splitlines():
+        key, sep, value = line.partition(":")
+        if sep and re.match(r"^[A-Za-z_][\w-]*$", key.strip()):
+            fm[key.strip()] = value.strip().strip("\"'")
+    return fm
+
+
+class TestManifest(unittest.TestCase):
+    def test_plugin_manifest(self):
+        text = (ROOT / "plugin.yaml").read_text(encoding="utf-8")
+        data = {}
+        for line in text.splitlines():
+            key, sep, value = line.partition(":")
+            if sep and key.strip() and not line.startswith((" ", "-")):
+                data[key.strip()] = value.strip()
+        self.assertEqual(data["name"], "ultra")
+        self.assertTrue(data["version"])
+        hooks_block = text.split("provides_hooks:")[1].split("tags:")[0]
+        self.assertIn("pre_tool_call", hooks_block)
+        self.assertIn("post_tool_call", hooks_block)
+        self.assertNotIn("pre_llm_call", hooks_block, "injection is a prompt section now")
+
+    def test_contract_has_two_sections(self):
+        text = (ROOT / "skills" / "contract" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertEqual(text.count("<!-- ultra-section-2 -->"), 1)
+
+    def test_every_core_skill_exists_and_parses(self):
+        for name in CORE:
+            path = ROOT / "skills" / name / "SKILL.md"
+            self.assertTrue(path.is_file(), f"missing {name}")
+            fm = frontmatter(path.read_text(encoding="utf-8"))
+            self.assertIsNotNone(fm, f"{name}: no frontmatter")
+            self.assertEqual(fm.get("name"), name)
+            self.assertTrue(fm.get("description"), f"{name}: empty description")
+            self.assertLessEqual(len(fm["description"]), 100, f"{name}: description too long")
+            self.assertIn("platforms", fm, f"{name}: no platforms")
+
+    def test_registered_names_match_disk(self):
+        source = (ROOT / "__init__.py").read_text(encoding="utf-8")
+        block = re.search(r"SKILL_NAMES = \((.*?)\)", source, re.S).group(1)
+        declared = tuple(re.findall(r'"([a-z-]+)"', block))
+        on_disk = tuple(sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")))
+        self.assertEqual(tuple(sorted(declared)), on_disk)
+
+    def test_no_collision_with_bundled_skills(self):
+        home = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes"))
+        bundled = home / "skills"
+        if not bundled.is_dir():
+            self.skipTest("no bundled skills dir to compare against")
+        taken = {p.parent.name for p in bundled.glob("**/SKILL.md")}
+        clash = taken.intersection(CORE)
+        self.assertEqual(clash, set(), f"names would shadow bundled skills: {clash}")
+
+    def test_cross_references_resolve(self):
+        for path in (ROOT / "skills").glob("*/SKILL.md"):
+            text = path.read_text(encoding="utf-8")
+            for target in set(re.findall(r"ultra:([a-z-]+)", text)):
+                self.assertIn(target, CORE, f"{path.parent.name} -> ultra:{target}")
+            for rel in set(re.findall(r"references/(?:roles|checklists)/[\w./-]+\.md", text)):
+                self.assertTrue((ROOT / rel).is_file(), f"{path.parent.name} -> {rel}")
+
+    def test_roles_present(self):
+        roles = list((ROOT / "references" / "roles").glob("*.md"))
+        self.assertGreaterEqual(len(roles), 6)
+
+    def test_library_index_fresh(self):
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "build_index.py"), "--root", str(ROOT), "--check"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+
+    def test_library_packs_are_well_formed(self):
+        packs = list((ROOT / "library").glob("*/*/SKILL.md"))
+        self.assertGreaterEqual(len(packs), 50)
+        for path in packs:
+            text = path.read_text(encoding="utf-8", errors="replace")
+            fm = frontmatter(text)
+            self.assertIsNotNone(fm, f"{path}: no frontmatter")
+            self.assertTrue(fm.get("description"), f"{path}: no description")
+
+    def test_no_claude_only_instructions_in_core_skills(self):
+        """The contract's tool-mapping section is the one place Claude names are allowed."""
+        pattern = re.compile(r"`(Bash|Read|Grep|Glob|TodoWrite)`|~/.claude/|\.claude/skills")
+        for path in (ROOT / "skills").glob("*/SKILL.md"):
+            text = path.read_text(encoding="utf-8")
+            if path.parent.name == "contract":
+                text = text.split("## 13. Hermes tool mapping")[0]
+            hits = pattern.findall(text)
+            self.assertEqual(hits, [], f"{path.parent.name}: Claude-only reference {hits}")
+
+
+if __name__ == "__main__":
+    unittest.main()

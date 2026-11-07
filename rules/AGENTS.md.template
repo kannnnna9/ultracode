@@ -1,0 +1,43 @@
+# Project rules — ULTRACODE
+
+<!-- Copy to the repo root as AGENTS.md and delete what does not apply.
+     These are invariants, not procedures. Procedures live in ultra:* skills.
+     Keep this file under ~70 lines: it is read on every turn. -->
+
+## What this project is
+<one paragraph: purpose, users, the thing it must never break>
+
+## Commands
+```
+install:  <exact>
+dev:      <exact>
+test:     <exact>          # this is the evidence for "tests pass"
+lint:     <exact>
+build:    <exact>
+```
+
+## Invariants
+- Tests are the evidence. No "done" without the test command's output in this session.
+- Every changed line traces to the task. Reformatting, renaming, and drive-by refactors are separate tasks.
+- No new dependency without a stated reason and the lines it replaces.
+- No secrets in code, logs, tests, or error messages. Config comes from the environment.
+- Migrations are forward-only and reversible or explicitly marked irreversible.
+- Public interfaces are additive; breaking changes need a version bump and a note.
+- Errors are handled where they can be acted on, not swallowed.
+- Never weaken a lint/test/type config to make a check pass.
+- Never `git push --force` to a shared branch, never `--no-verify`.
+
+## Conventions
+- Language/framework: <e.g. TypeScript strict, no `any` in new code>
+- Files: <layout rule, max size before splitting>
+- Naming: <rule>
+- Tests: <location, framework, one behaviour per test>
+- Commits: `<type>(<scope>): <imperative summary>`
+
+## Do not touch
+- <generated dirs, vendored code, migrations already applied, files owned by another agent>
+
+## Verification before saying "done"
+1. `test` command green, counts reported.
+2. `lint` and type check green (or baseline unchanged, stated).
+3. Diff read end to end.
